@@ -1,6 +1,9 @@
-# RecipeApp — Backend
+# Fridge Cheff — Backend
 
 ASP.NET Core Web API that handles ingredient detection, recipe suggestions, usage limits, and the admin panel.
+
+> Copyright (c) 2026 RAise & Perform L.P. All rights reserved.
+> This software is proprietary and confidential. See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -21,6 +24,7 @@ ASP.NET Core Web API that handles ingredient detection, recipe suggestions, usag
 - [iPhone / network access](#iphone--network-access)
 - [curl examples](#curl-examples)
 - [Production checklist](#production-checklist)
+- [License](#license)
 
 ---
 
@@ -51,8 +55,8 @@ apps/backend/
 ├── docker-compose.yml          Docker services: backend + MySQL + Adminer
 ├── .env.example                Template for local environment variables
 ├── Dockerfile                  Multi-stage .NET 10 build
-├── RecipeApp.sln
-└── RecipeApp.Api/
+├── Fridge Cheff.sln
+└── Fridge Cheff.Api/
     ├── Controllers/            Thin HTTP handlers — parse request, call service, return response
     │   ├── DevicesController.cs
     │   ├── FridgeScansController.cs
@@ -152,7 +156,7 @@ cd apps/backend
 docker compose up mysql adminer
 
 # Terminal 2 — run the API locally (from WSL or Windows terminal)
-cd apps/backend/RecipeApp.Api
+cd apps/backend/Fridge Cheff.Api
 dotnet run
 ```
 
@@ -182,7 +186,7 @@ GRANT ALL PRIVILEGES ON recipeapp.* TO 'recipeapp'@'localhost';
 ```
 
 ```bash
-cd apps/backend/RecipeApp.Api
+cd apps/backend/Fridge Cheff.Api
 dotnet run
 ```
 
@@ -195,7 +199,7 @@ Migrations run automatically on API startup (`db.Database.MigrateAsync()` in `Pr
 **Add a new migration** after changing entities:
 
 ```bash
-cd apps/backend/RecipeApp.Api
+cd apps/backend/Fridge Cheff.Api
 dotnet ef migrations add <MigrationName>
 ```
 
@@ -469,3 +473,16 @@ curl -s http://localhost:5000/health | jq
 - [ ] Add a `/health/ready` endpoint that checks MySQL connectivity
 - [ ] Audit EF Core includes for N+1 query patterns
 - [ ] Store `ADMIN_PASSWORD` in a secrets manager, not a plain env var
+
+---
+
+## License
+
+Copyright (c) 2026 **RAise & Perform L.P.** All rights reserved.
+
+This software and its source code are proprietary and confidential.
+Unauthorized copying, distribution, modification, public display, or public
+performance of this software, via any medium, is strictly prohibited without
+the prior written permission of the copyright holder.
+
+For licensing inquiries: [info@raiseperform.gr](mailto:info@raiseperform.gr)

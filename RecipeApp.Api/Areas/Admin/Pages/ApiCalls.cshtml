@@ -1,0 +1,41 @@
+@page "/admin/api-calls"
+@model ApiCallsModel
+@{
+    ViewData["Title"] = "API Calls";
+}
+
+<h2 class="mb-4">External API Calls</h2>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>Provider</th>
+                <th>Endpoint</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Result</th>
+                <th class="text-end">ms</th>
+                <th>Created</th>
+                <th>Error</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var c in Model.Calls)
+            {
+                <tr>
+                    <td><span class="badge @(c.Provider == "OpenAI" ? "bg-dark" : "bg-primary")">@c.Provider</span></td>
+                    <td><small>@c.Endpoint</small></td>
+                    <td><small>@c.RequestType</small></td>
+                    <td>@(c.StatusCode?.ToString() ?? "—")</td>
+                    <td>@(c.Success ? "✅" : "❌")</td>
+                    <td class="text-end">@c.DurationMs</td>
+                    <td><small>@c.CreatedAtUtc.ToString("MM-dd HH:mm:ss")</small></td>
+                    <td><small class="text-danger">@c.ErrorMessage</small></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,92 @@
+@page "/admin"
+@model IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<h2 class="mb-4">Dashboard</h2>
+<p class="text-muted">Today — @Model.Today</p>
+
+<div class="row g-3 mb-5">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="text-muted small">Scans today</div>
+                <div class="fs-2 fw-bold">@Model.ScansToday</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="text-muted small">Recipe searches today</div>
+                <div class="fs-2 fw-bold">@Model.SearchesToday</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="text-muted small">API calls today</div>
+                <div class="fs-2 fw-bold">@Model.ApiCallsToday</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card" style="border-color:#dc3545;">
+            <div class="card-body">
+                <div class="text-muted small">Failed API calls today</div>
+                <div class="fs-2 fw-bold text-danger">@Model.FailedApiCallsToday</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Recent Scans</div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Device</th><th>Status</th><th>Images</th><th>Created</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var s in Model.RecentScans)
+                    {
+                        <tr>
+                            <td><small class="text-muted">@s.DeviceId</small></td>
+                            <td><span class="badge @(s.Status == "Processed" ? "bg-success" : s.Status == "Failed" ? "bg-danger" : "bg-secondary")">@s.Status</span></td>
+                            <td>@s.ImageCount</td>
+                            <td><small>@s.CreatedAtUtc.ToString("HH:mm:ss")</small></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Recent Devices</div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                    <tr><th>Device ID</th><th>Last Seen</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var d in Model.RecentDevices)
+                    {
+                        <tr>
+                            <td><small>@d.DeviceId</small></td>
+                            <td><small>@d.LastSeenAtUtc.ToString("MM-dd HH:mm")</small></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

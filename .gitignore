@@ -1,0 +1,65 @@
+# ── Build output ──────────────────────────────────────────────────────────────
+bin/
+obj/
+out/
+publish/
+
+# ── Environment & secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+*.pfx
+*.p12
+secrets.json
+
+# ── ASP.NET Core runtime ──────────────────────────────────────────────────────
+# Uploaded images (stored locally in dev — use cloud storage in production)
+RecipeApp.Api/uploads/
+
+# Serilog rolling log files
+RecipeApp.Api/logs/
+
+# ── Entity Framework ──────────────────────────────────────────────────────────
+# Keep Migrations/ folder in source control — it is required for deployments
+# Uncomment the line below only if you want to exclude migrations entirely:
+# RecipeApp.Api/Migrations/
+
+# ── Visual Studio ─────────────────────────────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+*.DotSettings
+TestResults/
+*.vsidx
+
+# ── JetBrains Rider ───────────────────────────────────────────────────────────
+.idea/
+*.sln.iml
+
+# ── VS Code ───────────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── NuGet ─────────────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# ── Test coverage ─────────────────────────────────────────────────────────────
+coverage/
+*.coverage
+*.coveragexml
+lcov.info

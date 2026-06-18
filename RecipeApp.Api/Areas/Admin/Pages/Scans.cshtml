@@ -1,0 +1,41 @@
+@page "/admin/scans"
+@model ScansModel
+@{
+    ViewData["Title"] = "Scans";
+}
+
+<h2 class="mb-4">Scans</h2>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>Scan ID</th>
+                <th>Device</th>
+                <th>Status</th>
+                <th class="text-end">Images</th>
+                <th class="text-end">Detected</th>
+                <th class="text-end">Confirmed</th>
+                <th>Created</th>
+                <th>Error</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var s in Model.Scans)
+            {
+                <tr>
+                    <td><small><code>@s.ScanId.ToString()[..8]…</code></small></td>
+                    <td><small>@s.DeviceId</small></td>
+                    <td><span class="badge @(s.Status == "Processed" ? "bg-success" : s.Status == "Failed" ? "bg-danger" : "bg-warning text-dark")">@s.Status</span></td>
+                    <td class="text-end">@s.ImageCount</td>
+                    <td class="text-end">@s.DetectedCount</td>
+                    <td class="text-end">@s.ConfirmedCount</td>
+                    <td><small>@s.CreatedAtUtc.ToString("MM-dd HH:mm")</small></td>
+                    <td><small class="text-danger">@s.ErrorMessage</small></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

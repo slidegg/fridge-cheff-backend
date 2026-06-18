@@ -1,0 +1,60 @@
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-recipeapp};User=${MYSQL_USER:-recipeapp};Password=${MYSQL_PASSWORD:-recipeapp_dev};"
+      OpenAi__ApiKey: "${OPENAI_API_KEY:-}"
+      OpenAi__VisionModel: "${OPENAI_VISION_MODEL:-gpt-4o}"
+      Spoonacular__ApiKey: "${SPOONACULAR_API_KEY:-}"
+      Admin__Password: "${ADMIN_PASSWORD:-admin123}"
+      FreeTier__DailyScanLimit: "${FREE_DAILY_SCAN_LIMIT:-1}"
+      FreeTier__DailyRecipeSearchLimit: "${FREE_DAILY_RECIPE_SEARCH_LIMIT:-3}"
+      FreeTier__DailyRecipeDetailLimit: "${FREE_DAILY_RECIPE_DETAIL_LIMIT:-3}"
+      FreeTier__MaxImagesPerScan: "${MAX_IMAGES_PER_SCAN:-2}"
+      ImageStorage__MaxFileSizeMb: "${MAX_IMAGE_UPLOAD_MB:-8}"
+      ImageStorage__UploadPath: "/app/uploads"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-changeme_root}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-recipeapp}"
+      MYSQL_USER: "${MYSQL_USER:-recipeapp}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-recipeapp_dev}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-changeme_root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  backend_uploads:
+  backend_logs:

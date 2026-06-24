@@ -16,4 +16,7 @@ public record SuggestRecipesRequest
     /// <summary>protein_first | low_calories | tasty_first</summary>
     [Required]
     public string Goal { get; init; } = default!;
+
+    /// <summary>Optional — when set, recipes featuring this ingredient are boosted to the top.</summary>
+    public string? FocusIngredient { get; init; }
 }

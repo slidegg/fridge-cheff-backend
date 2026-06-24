@@ -14,6 +14,7 @@ namespace RecipeApp.Api.Services;
 public class RecipeService(
     AppDbContext db,
     DeviceService deviceService,
+    DeviceSettingsService deviceSettingsService,
     ISpoonacularService spoonacularService,
     UsageLimitService usageLimitService,
     IOptions<FreeTierOptions> freeTierOptions,
@@ -39,44 +40,63 @@ public class RecipeService(
     {
         var deviceUser = await deviceService.GetByDeviceIdAsync(req.DeviceId);
         var goal = ParseGoal(req.Goal);
+        var settings = await deviceSettingsService.GetSettingsAsync(deviceUser.Id);
+        var maxMissing = settings.AllowMissingIngredients ? settings.MaxMissingIngredients : 0;
+        var focusIngredient = string.IsNullOrWhiteSpace(req.FocusIngredient)
+            ? null
+            : req.FocusIngredient.Trim();
 
-        await usageLimitService.CheckAndIncrementAsync(deviceUser.Id, LimitType.RecipeSearch);
-
-        var spoonacularResults = await spoonacularService.FindByIngredientsAsync(
-            req.Ingredients,
-            number: freeTierOptions.Value.MaxSuggestionsPerSearch * 3,  // fetch more, filter down
-            ranking: 2,
-            ignorePantry: true
-        );
-
-        // Only show recipes where user has all required ingredients
-        var feasible = spoonacularResults
-            .Where(r => r.MissedIngredientCount == 0)
+        // Merge the device's "always available" list (pasta, rice, etc.) into the search —
+        // Spoonacular's own ingredient matching (synonyms, plurals) then treats them as available.
+        var searchIngredients = req.Ingredients
+            .Concat(settings.AlwaysAvailableIngredients)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        logger.LogInformation("Recipe suggest: {Total} results, {Feasible} feasible after filter",
-            spoonacularResults.Count, feasible.Count);
+        await usageLimitService.CheckLimitAsync(deviceUser.Id, LimitType.RecipeSearch);
+
+        var spoonacularResults = await spoonacularService.FindByIngredientsAsync(
+            searchIngredients,
+            number: freeTierOptions.Value.MaxSuggestionsPerSearch * 3,  // fetch more, filter down
+            ranking: 2,
+            ignorePantry: settings.IgnorePantry
+        );
+
+        await usageLimitService.IncrementAsync(deviceUser.Id, LimitType.RecipeSearch);
+
+        // Only show recipes within the device's allowed missing-ingredient threshold
+        var feasible = spoonacularResults
+            .Where(r => r.MissedIngredientCount <= maxMissing)
+            .ToList();
+
+        logger.LogInformation(
+            "Recipe suggest: {Total} results, {Feasible} feasible after filter (maxMissing={MaxMissing}, ignorePantry={IgnorePantry})",
+            spoonacularResults.Count, feasible.Count, maxMissing, settings.IgnorePantry);
 
         List<RecipeSummaryDto> recipeDtos;
         EmptyStateDto? emptyState = null;
 
         if (feasible.Count == 0)
         {
+            var suggestions = new List<string>();
+            if (!settings.AllowMissingIngredients)
+                suggestions.Add("Turn on \"Allow missing ingredients\" in Settings to see recipes needing a few extra items.");
+            else
+                suggestions.Add("Increase the allowed missing ingredients count in Settings.");
+            suggestions.Add("Add ingredients like pasta or rice to \"Always Available\" in Settings.");
+            suggestions.Add("Add more ingredients from your kitchen and search again.");
+            suggestions.Add("Try a different goal — some goals match more recipes than others.");
+
             emptyState = new EmptyStateDto(
                 Message: "No recipes found using only your available ingredients.",
-                Suggestions:
-                [
-                    "Allow basic pantry items like salt, pepper, and oil (always available).",
-                    "Allow up to 1–2 missing ingredients and pick up a few extras.",
-                    "Add more ingredients from your kitchen and search again.",
-                ]
+                Suggestions: suggestions
             );
             recipeDtos = [];
         }
         else
         {
             var scored = feasible
-                .Select(r => (Recipe: r, Score: ComputeScore(r, req.Ingredients, goal)))
+                .Select(r => (Recipe: r, Score: ComputeScore(r, searchIngredients, goal, focusIngredient)))
                 .OrderByDescending(x => x.Score)
                 .Take(freeTierOptions.Value.MaxSuggestionsPerSearch)
                 .ToList();
@@ -91,7 +111,8 @@ public class RecipeService(
                 MissedIngredientCount: x.Recipe.MissedIngredientCount,
                 ReadyInMinutes: 0,  // not available at search level
                 Score: Math.Round(x.Score, 1),
-                GoalReason: GenerateGoalReason(x.Recipe, goal)
+                GoalReason: GenerateGoalReason(x.Recipe, goal),
+                FeaturesFocusIngredient: focusIngredient is not null && FeaturesIngredient(x.Recipe, focusIngredient)
             )).ToList();
         }
 
@@ -114,14 +135,21 @@ public class RecipeService(
     {
         var deviceUser = await deviceService.GetByDeviceIdAsync(deviceId);
 
-        await usageLimitService.CheckAndIncrementAsync(deviceUser.Id, LimitType.RecipeDetail);
+        await usageLimitService.CheckLimitAsync(deviceUser.Id, LimitType.RecipeDetail);
 
         var detail = await spoonacularService.GetRecipeDetailAsync(recipeId)
                      ?? throw new NotFoundException($"Recipe {recipeId} not found.");
 
-        // Get user's most recent confirmed ingredients to compute missing
+        await usageLimitService.IncrementAsync(deviceUser.Id, LimitType.RecipeDetail);
+
+        // Get user's most recent confirmed ingredients, plus their "always available" list, to compute missing
         var userIngredients = await GetLatestConfirmedIngredientNamesAsync(deviceUser.Id);
-        var missingIngredients = ComputeMissingIngredients(detail.ExtendedIngredients, userIngredients);
+        var settings = await deviceSettingsService.GetSettingsAsync(deviceUser.Id);
+        var availableIngredients = userIngredients
+            .Concat(settings.AlwaysAvailableIngredients)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var missingIngredients = ComputeMissingIngredients(detail.ExtendedIngredients, availableIngredients);
 
         // Log the view
         db.RecipeInteractions.Add(new RecipeInteraction
@@ -185,6 +213,24 @@ public class RecipeService(
         }
     }
 
+    public async Task<SavedRecipesResponse> GetSavedRecipesAsync(string deviceId)
+    {
+        var deviceUser = await deviceService.GetByDeviceIdAsync(deviceId);
+
+        var saved = await db.SavedRecipes
+            .Where(s => s.DeviceUserId == deviceUser.Id)
+            .OrderByDescending(s => s.CreatedAtUtc)
+            .Select(s => new SavedRecipeDto(
+                s.SpoonacularRecipeId,
+                s.Title,
+                s.ImageUrl,
+                s.CreatedAtUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            ))
+            .ToListAsync();
+
+        return new SavedRecipesResponse(saved);
+    }
+
     private async Task<List<string>> GetLatestConfirmedIngredientNamesAsync(Guid deviceUserId)
     {
         var latestScan = await db.FridgeScans
@@ -203,18 +249,10 @@ public class RecipeService(
 
     private static List<string> ComputeMissingIngredients(
         List<SpoonacularExtendedIngredient> recipeIngredients,
-        List<string> userIngredients)
+        List<string> availableIngredients)
     {
-        // Pantry staples that are never considered "missing"
-        var pantryStaples = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "salt", "pepper", "water", "oil", "olive oil", "vegetable oil", "cooking oil",
-            "butter", "flour", "sugar", "baking soda", "baking powder",
-        };
-
         return recipeIngredients
-            .Where(ri => !pantryStaples.Contains(ri.Name))
-            .Where(ri => !userIngredients.Any(u =>
+            .Where(ri => !availableIngredients.Any(u =>
                 u.Contains(ri.Name, StringComparison.OrdinalIgnoreCase) ||
                 ri.Name.Contains(u, StringComparison.OrdinalIgnoreCase)))
             .Select(ri => ri.Name)
@@ -242,7 +280,8 @@ public class RecipeService(
     private static double ComputeScore(
         SpoonacularRecipeSummary recipe,
         List<string> userIngredients,
-        RecipeGoal goal)
+        RecipeGoal goal,
+        string? focusIngredient)
     {
         var coverageScore = userIngredients.Count > 0
             ? (recipe.UsedIngredientCount / (double)userIngredients.Count) * 40.0
@@ -250,7 +289,7 @@ public class RecipeService(
 
         var popularityBonus = recipe.Likes > 0 ? Math.Min(recipe.Likes / 10.0, 25.0) : 10.0;
 
-        return goal switch
+        var baseScore = goal switch
         {
             RecipeGoal.ProteinFirst =>
                 coverageScore * 0.6 +
@@ -267,7 +306,20 @@ public class RecipeService(
 
             _ => coverageScore
         };
+
+        // Strong boost (not a hard filter) so focus-ingredient recipes float to the top
+        // without risking an empty result set if none happen to match.
+        if (focusIngredient is not null && FeaturesIngredient(recipe, focusIngredient))
+            baseScore += 60.0;
+
+        return baseScore;
     }
+
+    private static bool FeaturesIngredient(SpoonacularRecipeSummary recipe, string focusIngredient) =>
+        recipe.UsedIngredients.Any(i =>
+            i.Name.Contains(focusIngredient, StringComparison.OrdinalIgnoreCase) ||
+            focusIngredient.Contains(i.Name, StringComparison.OrdinalIgnoreCase)) ||
+        recipe.Title.Contains(focusIngredient, StringComparison.OrdinalIgnoreCase);
 
     private static string GenerateGoalReason(SpoonacularRecipeSummary recipe, RecipeGoal goal)
     {

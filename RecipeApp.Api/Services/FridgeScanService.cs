@@ -21,7 +21,7 @@ public class FridgeScanService(
     {
         var deviceUser = await deviceService.GetByDeviceIdAsync(deviceId);
 
-        await usageLimitService.CheckAndIncrementAsync(deviceUser.Id, LimitType.Scan);
+        await usageLimitService.CheckLimitAsync(deviceUser.Id, LimitType.Scan);
 
         imageStorageService.ValidateImages(images);
 
@@ -54,6 +54,8 @@ public class FridgeScanService(
             throw new AppValidationException("Ingredient detection failed. Please try again.");
         }
 
+        await usageLimitService.IncrementAsync(deviceUser.Id, LimitType.Scan);
+
         var detectedIngredients = visionResult.Items.Select(item => new DetectedIngredient
         {
             Id = Guid.NewGuid(),
@@ -79,6 +81,33 @@ public class FridgeScanService(
                 i.Name, i.NormalizedName, i.Category, i.Confidence, i.QuantityVisible, i.NeedsConfirmation
             )).ToList(),
             Warnings: visionResult.Warnings
+        );
+    }
+
+    /// <summary>Creates an empty, already-processed scan shell so a user can build their
+    /// ingredient list manually via the same confirm-ingredients flow as a photo scan.
+    /// Does not consume the daily scan limit — no AI call is made.</summary>
+    public async Task<FridgeScanResponse> CreateManualScanAsync(string deviceId)
+    {
+        var deviceUser = await deviceService.GetByDeviceIdAsync(deviceId);
+
+        var scan = new FridgeScan
+        {
+            Id = Guid.NewGuid(),
+            DeviceUserId = deviceUser.Id,
+            CreatedAtUtc = DateTime.UtcNow,
+            ImageCount = 0,
+            Status = ScanStatus.Processed,
+        };
+        db.FridgeScans.Add(scan);
+        await db.SaveChangesAsync();
+
+        logger.LogInformation("Manual scan {ScanId} created for device {DeviceId}", scan.Id, deviceId);
+
+        return new FridgeScanResponse(
+            ScanId: scan.Id,
+            DetectedItems: [],
+            Warnings: []
         );
     }
 

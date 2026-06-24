@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SavedRecipe> SavedRecipes => Set<SavedRecipe>();
     public DbSet<UsageCounter> UsageCounters => Set<UsageCounter>();
     public DbSet<ExternalApiCallLog> ExternalApiCallLogs => Set<ExternalApiCallLog>();
+    public DbSet<DeviceSettings> DeviceSettings => Set<DeviceSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -28,6 +29,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         builder.Entity<UsageCounter>(e =>
         {
             e.HasIndex(u => new { u.DeviceUserId, u.DateUtc }).IsUnique();
+        });
+
+        builder.Entity<DeviceSettings>(e =>
+        {
+            e.HasIndex(s => s.DeviceUserId).IsUnique();
         });
 
         // Store enums as strings for readability in the database

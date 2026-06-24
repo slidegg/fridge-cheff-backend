@@ -8,7 +8,7 @@ namespace RecipeApp.Api.Controllers;
 [Route("api/fridge-scans")]
 public class FridgeScansController(FridgeScanService fridgeScanService) : ControllerBase
 {
-    /// <summary>Upload 1-2 ingredient photos and detect ingredients with AI.</summary>
+    /// <summary>Upload 1-4 ingredient photos and detect ingredients with AI.</summary>
     [HttpPost]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -20,6 +20,16 @@ public class FridgeScansController(FridgeScanService fridgeScanService) : Contro
         IFormFileCollection images)
     {
         var result = await fridgeScanService.CreateScanAsync(deviceId, images);
+        return Ok(result);
+    }
+
+    /// <summary>Create an empty scan shell for manual ingredient entry (no photos, no AI call).</summary>
+    [HttpPost("manual")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateManual([FromBody] CreateManualScanRequest req)
+    {
+        var result = await fridgeScanService.CreateManualScanAsync(req.DeviceId);
         return Ok(result);
     }
 

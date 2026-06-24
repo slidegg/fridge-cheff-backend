@@ -26,6 +26,12 @@ public class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExceptionMi
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             await WriteErrorAsync(context, ex.Message);
         }
+        catch (ExternalServiceException ex)
+        {
+            logger.LogError("External service unavailable: {Message}", ex.Message);
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            await WriteErrorAsync(context, ex.Message);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception on {Method} {Path}",

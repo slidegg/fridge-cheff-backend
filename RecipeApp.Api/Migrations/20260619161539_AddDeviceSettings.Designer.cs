@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RecipeApp.Api.Data;
 
@@ -11,9 +12,11 @@ using RecipeApp.Api.Data;
 namespace RecipeApp.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260619161539_AddDeviceSettings")]
+    partial class AddDeviceSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,21 +104,18 @@ namespace RecipeApp.Api.Migrations
                     b.Property<bool>("AllowMissingIngredients")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("AlwaysAvailableIngredientsJson")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime(6)");
 
                     b.Property<Guid>("DeviceUserId")
                         .HasColumnType("char(36)");
 
-                    b.Property<bool>("IgnorePantry")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<int>("MaxMissingIngredients")
                         .HasColumnType("int");
+
+                    b.Property<string>("PantryStaplesJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime(6)");

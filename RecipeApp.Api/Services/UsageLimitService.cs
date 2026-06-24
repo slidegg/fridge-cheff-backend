@@ -10,22 +10,28 @@ namespace RecipeApp.Api.Services;
 
 public class UsageLimitService(AppDbContext db, IOptions<FreeTierOptions> options)
 {
-    public async Task CheckAndIncrementAsync(Guid deviceUserId, LimitType limitType)
+    /// <summary>Throws if the daily limit is already reached. Does not consume a unit — call IncrementAsync after the operation succeeds.</summary>
+    public async Task CheckLimitAsync(Guid deviceUserId, LimitType limitType)
     {
+        if (options.Value.UnlimitedUsage)
+            return;
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var counter = await GetOrCreateCounterAsync(deviceUserId, today);
+        await db.SaveChangesAsync();
 
-        var (current, limit, label) = limitType switch
-        {
-            LimitType.Scan => (counter.ScansUsed, options.Value.DailyScanLimit, "scans"),
-            LimitType.RecipeSearch => (counter.RecipeSearchesUsed, options.Value.DailyRecipeSearchLimit, "recipe searches"),
-            LimitType.RecipeDetail => (counter.RecipeDetailsUsed, options.Value.DailyRecipeDetailLimit, "recipe detail views"),
-            _ => throw new ArgumentException($"Unknown limit type: {limitType}")
-        };
+        var (current, limit, label) = GetCurrentAndLimit(counter, limitType);
 
         if (current >= limit)
             throw new RateLimitException(
                 $"Daily limit of {limit} {label} reached. Try again tomorrow.");
+    }
+
+    /// <summary>Call only after the corresponding operation has actually succeeded.</summary>
+    public async Task IncrementAsync(Guid deviceUserId, LimitType limitType)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var counter = await GetOrCreateCounterAsync(deviceUserId, today);
 
         switch (limitType)
         {
@@ -37,6 +43,15 @@ public class UsageLimitService(AppDbContext db, IOptions<FreeTierOptions> option
         counter.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync();
     }
+
+    private (int Current, int Limit, string Label) GetCurrentAndLimit(
+        UsageCounter counter, LimitType limitType) => limitType switch
+    {
+        LimitType.Scan => (counter.ScansUsed, options.Value.DailyScanLimit, "scans"),
+        LimitType.RecipeSearch => (counter.RecipeSearchesUsed, options.Value.DailyRecipeSearchLimit, "recipe searches"),
+        LimitType.RecipeDetail => (counter.RecipeDetailsUsed, options.Value.DailyRecipeDetailLimit, "recipe detail views"),
+        _ => throw new ArgumentException($"Unknown limit type: {limitType}")
+    };
 
     public async Task<UsageResponse> GetUsageAsync(Guid deviceUserId)
     {
@@ -51,7 +66,8 @@ public class UsageLimitService(AppDbContext db, IOptions<FreeTierOptions> option
             RecipeSearchesUsed: counter.RecipeSearchesUsed,
             RecipeSearchLimit: options.Value.DailyRecipeSearchLimit,
             RecipeDetailsUsed: counter.RecipeDetailsUsed,
-            RecipeDetailLimit: options.Value.DailyRecipeDetailLimit
+            RecipeDetailLimit: options.Value.DailyRecipeDetailLimit,
+            IsUnlimited: options.Value.UnlimitedUsage
         );
     }
 

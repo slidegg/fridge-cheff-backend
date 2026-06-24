@@ -22,7 +22,7 @@ public class OpenAiVisionService(
     };
 
     private const string DetectionPrompt = """
-        Identify visible food ingredients from these 1-2 images.
+        Identify visible food ingredients from these 1-4 images.
         The images may show a fridge, pantry, kitchen counter, or loose ingredients.
         Return JSON only. No markdown, no explanation.
         Do not estimate exact grams. Do not calculate macros.

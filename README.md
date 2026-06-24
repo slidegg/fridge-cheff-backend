@@ -279,6 +279,8 @@ All endpoints return `application/json`. Errors return `{ "error": "message" }`.
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/devices/register` | Register a device — idempotent, returns existing if already registered |
+| `GET` | `/api/devices/settings?deviceId=` | Get device's recipe-matching and pantry preferences |
+| `PUT` | `/api/devices/settings` | Update device's recipe-matching and pantry preferences |
 | `POST` | `/api/fridge-scans` | Upload 1–2 ingredient photos, detect ingredients with AI |
 | `POST` | `/api/fridge-scans/{scanId}/confirm-ingredients` | Confirm or edit the detected ingredient list |
 | `POST` | `/api/recipes/suggest` | Get recipe suggestions based on ingredients and goal |
@@ -310,8 +312,22 @@ Exceeded limit → `HTTP 429` with `{ "error": "..." }`.
 
 ### Missing ingredient filter
 
-By default only recipes where `missedIngredientCount == 0` are returned.
-If no recipes qualify, the response includes an `emptyState` object with three actionable suggestions for the user.
+By default only recipes where `missedIngredientCount == 0` are returned — i.e. the user has every required ingredient.
+
+This is per-device configurable via `DeviceSettings` (`/api/devices/settings`):
+
+| Field | Default | Effect |
+|---|---|---|
+| `allowMissingIngredients` | `false` | When `true`, the threshold below is used instead of `0` |
+| `maxMissingIngredients` | `0` | Max ingredients a recipe may still need (0–10) |
+| `ignorePantry` | `true` | Passed directly as Spoonacular's `findByIngredients` `ignorePantry` parameter — when on, common staples (salt, pepper, oil) don't count against a recipe |
+| `alwaysAvailableIngredients` | `[]` | Custom per-device list (e.g. `pasta`, `rice`) — merged directly into the ingredient list sent to Spoonacular on every search |
+
+**Always-available ingredients are merged into the search itself**, not filtered post-hoc. `SuggestAsync` concatenates `req.Ingredients` with `settings.AlwaysAvailableIngredients` before calling Spoonacular, so Spoonacular's own ingredient-matching (which handles synonyms and plurals far better than a simple string match) decides what counts as "used" vs "missing." The same merged-availability approach is used by `GetDetailAsync` when computing the detail page's `missingIngredients` — `userIngredients` (from the latest scan) plus `alwaysAvailableIngredients` together form the device's "available" set in both places.
+
+A `DeviceSettings` row is created with these defaults on first access — no explicit creation step needed.
+
+If no recipes qualify after filtering, the response includes an `emptyState` object with actionable suggestions (e.g. enabling `allowMissingIngredients` in Settings).
 
 ---
 

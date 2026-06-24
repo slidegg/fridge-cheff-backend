@@ -7,5 +7,6 @@ public record UsageResponse(
     int RecipeSearchesUsed,
     int RecipeSearchLimit,
     int RecipeDetailsUsed,
-    int RecipeDetailLimit
+    int RecipeDetailLimit,
+    bool IsUnlimited
 );

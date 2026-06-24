@@ -76,6 +76,7 @@ else
 
 // ── Business Services ─────────────────────────────────────────────────────────
 builder.Services.AddScoped<DeviceService>();
+builder.Services.AddScoped<DeviceSettingsService>();
 builder.Services.AddScoped<FridgeScanService>();
 builder.Services.AddScoped<RecipeService>();
 builder.Services.AddScoped<UsageLimitService>();

@@ -19,6 +19,16 @@ public class RecipesController(RecipeService recipeService) : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Get the device's saved recipes.</summary>
+    [HttpGet("saved")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSaved([FromQuery] string deviceId)
+    {
+        var result = await recipeService.GetSavedRecipesAsync(deviceId);
+        return Ok(result);
+    }
+
     /// <summary>Get full recipe detail with macros, steps, and missing ingredients.</summary>
     [HttpGet("{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]

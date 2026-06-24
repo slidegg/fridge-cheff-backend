@@ -15,7 +15,8 @@ public record RecipeSummaryDto(
     int MissedIngredientCount,
     int ReadyInMinutes,
     double Score,
-    string GoalReason
+    string GoalReason,
+    bool FeaturesFocusIngredient
 );
 
 public record EmptyStateDto(

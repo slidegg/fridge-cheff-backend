@@ -16,7 +16,8 @@ services:
       FreeTier__DailyScanLimit: "${FREE_DAILY_SCAN_LIMIT:-1}"
       FreeTier__DailyRecipeSearchLimit: "${FREE_DAILY_RECIPE_SEARCH_LIMIT:-3}"
       FreeTier__DailyRecipeDetailLimit: "${FREE_DAILY_RECIPE_DETAIL_LIMIT:-3}"
-      FreeTier__MaxImagesPerScan: "${MAX_IMAGES_PER_SCAN:-2}"
+      FreeTier__MaxImagesPerScan: "${MAX_IMAGES_PER_SCAN:-4}"
+      FreeTier__UnlimitedUsage: "${FREE_TIER_UNLIMITED:-false}"
       ImageStorage__MaxFileSizeMb: "${MAX_IMAGE_UPLOAD_MB:-8}"
       ImageStorage__UploadPath: "/app/uploads"
     volumes:
